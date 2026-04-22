@@ -48,6 +48,32 @@ async function fetchJob(accessToken, jobId) {
   return json.data && json.data.length ? json.data[0] : null;
 }
 
+async function fetchJobDetails(accessToken, recordId) {
+  const fields = [
+    "Name",
+    "Job_ID_Number",
+    "Status",
+    "Install_Date",
+    "Requested_Install_Date",
+    "Deal_Name",
+    "Projex",
+    "Kit_Information",
+    "Qty_Cams"
+  ].join(",");
+
+  const response = await fetch(`${ZOHO_API_DOMAIN}/crm/v8/Install/${recordId}?fields=${encodeURIComponent(fields)}`, {
+    headers: { Authorization: `Zoho-oauthtoken ${accessToken}` }
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Zoho job details lookup failed: ${text}`);
+  }
+
+  const json = await response.json();
+  return json.data && json.data.length ? json.data[0] : null;
+}
+
 module.exports = async (req, res) => {
   if (req.method !== "GET") {
     return sendJson(res, 405, { error: "Method not allowed." });
@@ -65,10 +91,15 @@ module.exports = async (req, res) => {
 
   try {
     const tokenData = await getAccessToken();
-    const job = await fetchJob(tokenData.access_token, jobId);
+    const jobMatch = await fetchJob(tokenData.access_token, jobId);
 
-    if (!job) {
+    if (!jobMatch) {
       return sendJson(res, 404, { error: `No job found for ${jobId}.` });
+    }
+
+    const job = await fetchJobDetails(tokenData.access_token, jobMatch.id);
+    if (!job) {
+      return sendJson(res, 404, { error: `No job details found for ${jobId}.` });
     }
 
     const cameras = Array.isArray(job.Kit_Information)
