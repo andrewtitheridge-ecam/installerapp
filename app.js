@@ -39,6 +39,10 @@ const jobResult = document.getElementById("job-result");
 const jobNameText = document.getElementById("job-name");
 const jobMetaText = document.getElementById("job-meta");
 const jobCameras = document.getElementById("job-cameras");
+const projectResult = document.getElementById("project-result");
+const projectNameText = document.getElementById("project-name");
+const projectMetaText = document.getElementById("project-meta");
+const projectCameras = document.getElementById("project-cameras");
 
 let currentCameraId = "";
 let currentObjectUrl = "";
@@ -86,7 +90,7 @@ function setLocalFeedSettings(settings) {
 }
 
 function rememberCameraId(cameraId) {
-  const normalized = cameraId.trim();
+  const normalized = cameraId.trim().toLowerCase();
   if (!normalized) return;
 
   const next = [normalized, ...getSavedCameraIds().filter((id) => id !== normalized)].slice(0, MAX_SAVED);
@@ -149,18 +153,23 @@ function setJobStatus(message, tone = "") {
 }
 
 function buildSnapshotUrl(cameraId) {
-  const encodedId = encodeURIComponent(cameraId);
+  const encodedId = encodeURIComponent(cameraId.toLowerCase());
   return `https://media.evercam.io/v2/cameras/${encodedId}/live/snapshot?t=${Date.now()}`;
 }
 
 function buildHlsUrl(cameraId) {
-  const encodedId = encodeURIComponent(cameraId);
+  const encodedId = encodeURIComponent(cameraId.toLowerCase());
   return `https://media.evercam.io/v2/cameras/${encodedId}/hls?t=${Date.now()}`;
 }
 
 function buildCameraDetailsUrl(cameraId) {
-  const encodedId = encodeURIComponent(cameraId);
+  const encodedId = encodeURIComponent(cameraId.toLowerCase());
   return `https://media.evercam.io/v2/cameras/${encodedId}`;
+}
+
+function buildProjectCamerasUrl(projectId) {
+  const encodedId = encodeURIComponent(projectId.toLowerCase());
+  return `https://media.evercam.io/v2/projects/${encodedId}/cameras`;
 }
 
 function buildLocalCameraUrl() {
@@ -281,6 +290,42 @@ function renderJobResult(job) {
   });
 }
 
+function renderProjectResult(projectId, cameras) {
+  projectResult.hidden = false;
+  projectNameText.textContent = projectId;
+  projectMetaText.textContent = `${cameras.length} camera${cameras.length === 1 ? "" : "s"} found for this project.`;
+  projectCameras.innerHTML = "";
+
+  cameras.forEach((camera) => {
+    const chip = document.createElement("div");
+    chip.className = "saved-camera";
+
+    const loadButton = document.createElement("button");
+    loadButton.type = "button";
+    loadButton.className = "saved-camera-load";
+    loadButton.textContent = camera.id;
+    loadButton.title = camera.name || camera.id;
+    loadButton.addEventListener("click", () => {
+      cameraInput.value = camera.id.toLowerCase();
+      loadCurrentView(camera.id.toLowerCase());
+    });
+
+    chip.append(loadButton);
+    projectCameras.appendChild(chip);
+  });
+}
+
+function hideProjectResult() {
+  projectResult.hidden = true;
+  projectNameText.textContent = "";
+  projectMetaText.textContent = "";
+  projectCameras.innerHTML = "";
+}
+
+function looksLikeProjectId(value) {
+  return /^[a-z0-9]{5}-[a-z0-9]{5}$/i.test(value.trim());
+}
+
 function cleanupObjectUrl() {
   if (currentObjectUrl) {
     URL.revokeObjectURL(currentObjectUrl);
@@ -340,7 +385,7 @@ function switchTab(tab) {
 }
 
 async function loadSnapshot(cameraId) {
-  const normalized = cameraId.trim();
+  const normalized = cameraId.trim().toLowerCase();
   if (!normalized) {
     setStatus("Enter a camera ID first.", "error");
     return;
@@ -389,7 +434,7 @@ async function loadSnapshot(cameraId) {
 }
 
 async function loadLiveFeed(cameraId) {
-  const normalized = cameraId.trim();
+  const normalized = cameraId.trim().toLowerCase();
   if (!normalized) {
     setStatus("Enter a camera ID first.", "error");
     return;
@@ -479,12 +524,13 @@ async function loadLiveFeed(cameraId) {
 }
 
 function loadCurrentView(cameraId) {
+  const normalized = cameraId.trim().toLowerCase();
   if (currentTab === "live") {
-    return loadLiveFeed(cameraId);
+    return loadLiveFeed(normalized);
   }
 
   if (currentTab === "local") {
-    currentCameraId = cameraId.trim();
+    currentCameraId = normalized;
     cameraInput.value = currentCameraId;
     currentCameraText.textContent = `Current camera: ${currentCameraId || "No camera selected yet."}`;
     rememberCameraId(currentCameraId);
@@ -493,12 +539,19 @@ function loadCurrentView(cameraId) {
     return;
   }
 
-  return loadSnapshot(cameraId);
+  return loadSnapshot(normalized);
 }
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
-  loadCurrentView(cameraInput.value);
+  const value = cameraInput.value.trim().toLowerCase();
+  cameraInput.value = value;
+  if (looksLikeProjectId(value)) {
+    loadProjectCameras(value);
+    return;
+  }
+  hideProjectResult();
+  loadCurrentView(value);
 });
 
 jobForm.addEventListener("submit", async (event) => {
@@ -587,3 +640,50 @@ localPortInput.value = localFeedSettings.port;
 cameraBrandSelect.value = localFeedSettings.brand;
 updateLocalFeedUi();
 renderSavedCameraIds();
+cameraInput.setAttribute("autocapitalize", "none");
+cameraInput.addEventListener("input", () => {
+  const start = cameraInput.selectionStart;
+  const end = cameraInput.selectionEnd;
+  const lower = cameraInput.value.toLowerCase();
+  if (cameraInput.value !== lower) {
+    cameraInput.value = lower;
+    if (start !== null && end !== null) {
+      cameraInput.setSelectionRange(start, end);
+    }
+  }
+});
+
+async function loadProjectCameras(projectId) {
+  setStatus("Loading project cameras...", "");
+  hideProjectResult();
+
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(buildProjectCamerasUrl(projectId), { headers });
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || result.error || "Could not load that project.");
+    }
+
+    const cameras = Array.isArray(result.cameras)
+      ? result.cameras.map((camera) => ({
+          id: (camera.id || camera.exid || "").toLowerCase(),
+          name: camera.name || ""
+        })).filter((camera) => camera.id)
+      : [];
+
+    if (!cameras.length) {
+      throw new Error("No cameras found for that project.");
+    }
+
+    renderProjectResult(projectId, cameras);
+    setStatus(`Loaded ${cameras.length} camera${cameras.length === 1 ? "" : "s"} for project ${projectId}.`, "success");
+    cameraInput.value = cameras[0].id;
+    currentCameraId = cameras[0].id;
+    currentCameraText.textContent = `Current camera: ${currentCameraId}`;
+    refreshButton.disabled = false;
+  } catch (error) {
+    setStatus(error.message || "Could not load that project.", "error");
+  }
+}
