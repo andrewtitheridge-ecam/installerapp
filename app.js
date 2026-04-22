@@ -1,5 +1,6 @@
 const STORAGE_KEY = "evercam-saved-camera-ids";
 const REMEMBERED_USERNAME_KEY = "evercam-remembered-username";
+const REMEMBERED_PASSWORD_KEY = "evercam-remembered-password";
 const LOCAL_FEED_STORAGE_KEY = "evercam-local-feed-settings";
 const MAX_SAVED = 8;
 
@@ -69,6 +70,18 @@ function setRememberedUsername(username) {
     return;
   }
   localStorage.setItem(REMEMBERED_USERNAME_KEY, username);
+}
+
+function getRememberedPassword() {
+  return localStorage.getItem(REMEMBERED_PASSWORD_KEY) || "";
+}
+
+function setRememberedPassword(password) {
+  if (!password) {
+    localStorage.removeItem(REMEMBERED_PASSWORD_KEY);
+    return;
+  }
+  localStorage.setItem(REMEMBERED_PASSWORD_KEY, password);
 }
 
 function getLocalFeedSettings() {
@@ -208,8 +221,10 @@ async function getAuthHeaders() {
 
   if (rememberLoginInput.checked) {
     setRememberedUsername(username);
+    setRememberedPassword(password);
   } else {
     setRememberedUsername("");
+    setRememberedPassword("");
   }
 
   const loginResponse = await fetch("https://media.evercam.io/v2/auth/login", {
@@ -236,6 +251,20 @@ async function getAuthHeaders() {
   }
 
   sessionAuthToken = loginToken;
+
+  if (rememberLoginInput.checked && window.PasswordCredential && navigator.credentials?.store) {
+    try {
+      const credential = new window.PasswordCredential({
+        id: username,
+        password,
+        name: username
+      });
+      await navigator.credentials.store(credential);
+    } catch {
+      // Ignore browser credential storage failures and continue with login.
+    }
+  }
+
   return { Authorization: `Bearer ${sessionAuthToken}` };
 }
 
@@ -345,7 +374,7 @@ function cleanupHls() {
   liveVideo.load();
 }
 
-function switchTab(tab) {
+function switchTab(tab, options = {}) {
   currentTab = tab;
   const isSnapshot = tab === "snapshot";
   const isLive = tab === "live";
@@ -376,7 +405,7 @@ function switchTab(tab) {
           : "Enter a camera ID to prepare the local feed."
   );
 
-  if (currentCameraId && !isLocal) {
+  if (currentCameraId && !isLocal && !options.suppressLoad) {
     loadCurrentView(currentCameraId);
   }
 
@@ -583,6 +612,7 @@ clearLoginButton.addEventListener("click", () => {
   authPasswordInput.value = "";
   rememberLoginInput.checked = false;
   setRememberedUsername("");
+  setRememberedPassword("");
   sessionAuthToken = "";
 });
 
@@ -604,7 +634,8 @@ localPortInput.addEventListener("input", updateLocalFeedUi);
 cameraBrandSelect.addEventListener("change", updateLocalFeedUi);
 
 authUsernameInput.value = getRememberedUsername();
-rememberLoginInput.checked = Boolean(authUsernameInput.value);
+authPasswordInput.value = getRememberedPassword();
+rememberLoginInput.checked = Boolean(authUsernameInput.value || authPasswordInput.value);
 const localFeedSettings = getLocalFeedSettings();
 localIpInput.value = localFeedSettings.ip;
 localPortInput.value = localFeedSettings.port;
@@ -654,7 +685,7 @@ async function loadProjectCameras(projectId) {
 
     renderProjectResult(projectId, cameras, cameras[0].id);
     setLookupStatus(`Loaded ${cameras.length} camera${cameras.length === 1 ? "" : "s"} for project ${projectId}.`, "success");
-    switchTab("snapshot");
+    switchTab("snapshot", { suppressLoad: true });
     await loadSnapshot(cameras[0].id, {
       preserveSummary: true,
       preserveLookupValue: projectId
@@ -715,7 +746,7 @@ lookupForm.addEventListener("submit", async (event) => {
         currentCameraId = result.cameras[0].id;
         currentCameraText.textContent = `Current camera: ${currentCameraId}`;
         refreshButton.disabled = false;
-        switchTab("snapshot");
+        switchTab("snapshot", { suppressLoad: true });
         await loadSnapshot(result.cameras[0].id, {
           preserveSummary: true,
           preserveLookupValue: jobId

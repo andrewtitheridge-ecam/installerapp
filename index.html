@@ -21,7 +21,7 @@
     </section>
 
     <section class="panel controls-panel">
-      <form id="lookup-form" class="snapshot-form">
+      <form id="lookup-form" class="snapshot-form" autocomplete="on">
         <label for="lookup-id" class="label">Camera ID or Project ID or Job Number</label>
         <div class="form-row">
           <input
@@ -36,58 +36,57 @@
           <button type="submit" class="primary-button">Find Camera</button>
         </div>
         <p id="lookup-status" class="helper-text">Enter a camera ID, project ID, or 5-digit job number. The app will figure out which one you entered.</p>
+        <div id="job-result" class="job-result" hidden>
+          <div class="job-summary">
+            <p class="section-title">Job Summary</p>
+            <p id="job-name" class="current-camera"></p>
+            <p id="job-meta" class="helper-text"></p>
+            <p><a id="job-worksheet-link" class="worksheet-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Open Installation Worksheet</a></p>
+          </div>
+          <div>
+            <p class="section-title">Cameras</p>
+            <div id="job-cameras" class="saved-cameras"></div>
+          </div>
+        </div>
+
+        <div class="local-grid auth-grid">
+          <div>
+            <label for="auth-username" class="label token-label">Evercam Username</label>
+            <input
+              id="auth-username"
+              name="username"
+              type="text"
+              placeholder="Optional: your Evercam email"
+              autocomplete="username"
+              spellcheck="false"
+            >
+          </div>
+          <div class="auth-password-wrap">
+            <label for="auth-password" class="label token-label">Evercam Password</label>
+            <input
+              id="auth-password"
+              name="password"
+              type="password"
+              placeholder="Optional"
+              autocomplete="current-password"
+              spellcheck="false"
+            >
+          </div>
+        </div>
+
+        <label class="remember-wrap">
+          <input id="remember-login" type="checkbox">
+          <span>Remember login on this device and allow browser password manager to save the password.</span>
+        </label>
+
+        <div class="helper-row">
+          <p class="helper-text">For private cameras, sign in with Evercam username and password. The user must have member access or above on the selected camera.</p>
+          <div class="button-stack">
+            <button id="clear-login" type="button" class="ghost-button">Clear Login</button>
+            <button id="clear-history" type="button" class="ghost-button">Clear Saved IDs</button>
+          </div>
+        </div>
       </form>
-
-      <div id="job-result" class="job-result" hidden>
-        <div class="job-summary">
-          <p class="section-title">Job Summary</p>
-          <p id="job-name" class="current-camera"></p>
-          <p id="job-meta" class="helper-text"></p>
-          <p><a id="job-worksheet-link" class="worksheet-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Open Installation Worksheet</a></p>
-        </div>
-        <div>
-          <p class="section-title">Cameras</p>
-          <div id="job-cameras" class="saved-cameras"></div>
-        </div>
-      </div>
-
-      <div class="local-grid auth-grid">
-        <div>
-          <label for="auth-username" class="label token-label">Evercam Username</label>
-          <input
-            id="auth-username"
-            name="authUsername"
-            type="text"
-            placeholder="Optional: your Evercam email"
-            autocomplete="username"
-            spellcheck="false"
-          >
-        </div>
-        <div class="auth-password-wrap">
-          <label for="auth-password" class="label token-label">Evercam Password</label>
-          <input
-            id="auth-password"
-            name="authPassword"
-            type="password"
-            placeholder="Optional"
-            autocomplete="current-password"
-            spellcheck="false"
-          >
-        </div>
-      </div>
-
-      <label class="remember-wrap">
-        <input id="remember-login" type="checkbox">
-        <span>Remember username on this device and allow browser password manager to save the password.</span>
-      </label>
-
-      <div class="helper-row">
-        <p class="helper-text">For private cameras, sign in with Evercam username and password. The user must have member access or above on the selected camera.</p>
-        <div class="button-stack">
-          <button id="clear-login" type="button" class="ghost-button">Clear Login</button>
-          <button id="clear-history" type="button" class="ghost-button">Clear Saved IDs</button>
-        </div>
-      </div>
 
       <div>
         <p class="section-title">Recent Cameras</p>
