@@ -66,6 +66,7 @@
       <div class="tab-row" role="tablist" aria-label="Camera views">
         <button id="snapshot-tab" type="button" class="tab-button active" role="tab" aria-selected="true">Snapshot</button>
         <button id="live-tab" type="button" class="tab-button" role="tab" aria-selected="false">Live Feed</button>
+        <button id="local-tab" type="button" class="tab-button" role="tab" aria-selected="false">Local Feed</button>
       </div>
 
       <div class="viewer-header">
@@ -93,6 +94,45 @@
           <div id="live-placeholder" class="placeholder">
             Live feed will appear here.
           </div>
+        </div>
+      </div>
+
+      <div id="local-panel" class="view-panel" hidden>
+        <div class="local-card">
+          <div class="local-grid">
+            <div>
+              <label for="local-ip" class="label">Local Camera IP</label>
+              <input id="local-ip" type="text" value="192.168.8.101" autocomplete="off" spellcheck="false">
+            </div>
+            <div>
+              <label for="local-port" class="label">Port</label>
+              <input id="local-port" type="text" value="80" autocomplete="off" spellcheck="false">
+            </div>
+          </div>
+
+          <div class="local-grid">
+            <div>
+              <label for="camera-brand" class="label">Camera Brand</label>
+              <select id="camera-brand" class="token-input local-select">
+                <option value="auto">Auto / Unknown</option>
+                <option value="hikvision">Hikvision</option>
+                <option value="milesight">Milesight</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">Quick Action</label>
+              <div class="button-stack">
+                <button id="open-local-camera" type="button" class="primary-button">Open Camera</button>
+                <button id="reset-local-defaults" type="button" class="ghost-button">Reset Defaults</button>
+              </div>
+            </div>
+          </div>
+
+          <p id="local-url" class="helper-text">Local address: http://192.168.8.101:80</p>
+          <p id="local-help" class="helper-text">
+            This opens the local camera page on the onsite LAN. Hosted web apps usually cannot auto-scan your local network, so direct browser detection is limited.
+          </p>
         </div>
       </div>
     </section>

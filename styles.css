@@ -90,6 +90,22 @@ h1 {
   color: #fff;
 }
 
+.local-card {
+  padding: 2px 0 0;
+}
+
+.local-grid {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.local-select {
+  min-height: 58px;
+  resize: none;
+}
+
 .controls-panel {
   padding: 24px;
   margin-bottom: 20px;
@@ -300,6 +316,10 @@ button:disabled {
   .helper-row {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .local-grid {
+    grid-template-columns: 1fr;
   }
 
   .primary-button,

@@ -1,5 +1,6 @@
 const STORAGE_KEY = "evercam-saved-camera-ids";
 const TOKEN_STORAGE_KEY = "evercam-auth-token";
+const LOCAL_FEED_STORAGE_KEY = "evercam-local-feed-settings";
 const MAX_SAVED = 8;
 
 const form = document.getElementById("camera-form");
@@ -11,15 +12,24 @@ const clearTokenButton = document.getElementById("clear-token");
 const refreshButton = document.getElementById("refresh-button");
 const snapshotTabButton = document.getElementById("snapshot-tab");
 const liveTabButton = document.getElementById("live-tab");
+const localTabButton = document.getElementById("local-tab");
 const viewerTitle = document.getElementById("viewer-title");
 const snapshotPanel = document.getElementById("snapshot-panel");
 const livePanel = document.getElementById("live-panel");
+const localPanel = document.getElementById("local-panel");
 const statusText = document.getElementById("status");
 const currentCameraText = document.getElementById("current-camera");
 const snapshotImage = document.getElementById("snapshot-image");
 const snapshotPlaceholder = document.getElementById("snapshot-placeholder");
 const liveVideo = document.getElementById("live-video");
 const livePlaceholder = document.getElementById("live-placeholder");
+const localIpInput = document.getElementById("local-ip");
+const localPortInput = document.getElementById("local-port");
+const cameraBrandSelect = document.getElementById("camera-brand");
+const openLocalCameraButton = document.getElementById("open-local-camera");
+const resetLocalDefaultsButton = document.getElementById("reset-local-defaults");
+const localUrlText = document.getElementById("local-url");
+const localHelpText = document.getElementById("local-help");
 
 let currentCameraId = "";
 let currentObjectUrl = "";
@@ -45,6 +55,23 @@ function getSavedToken() {
 
 function setSavedToken(token) {
   localStorage.setItem(TOKEN_STORAGE_KEY, token);
+}
+
+function getLocalFeedSettings() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOCAL_FEED_STORAGE_KEY) || "{}");
+    return {
+      ip: parsed.ip || "192.168.8.101",
+      port: parsed.port || "80",
+      brand: parsed.brand || "auto"
+    };
+  } catch {
+    return { ip: "192.168.8.101", port: "80", brand: "auto" };
+  }
+}
+
+function setLocalFeedSettings(settings) {
+  localStorage.setItem(LOCAL_FEED_STORAGE_KEY, JSON.stringify(settings));
 }
 
 function rememberCameraId(cameraId) {
@@ -120,6 +147,32 @@ function buildCameraDetailsUrl(cameraId) {
   return `https://media.evercam.io/v2/cameras/${encodedId}`;
 }
 
+function buildLocalCameraUrl() {
+  const ip = localIpInput.value.trim() || "192.168.8.101";
+  const port = localPortInput.value.trim() || "80";
+  return `http://${ip}:${port}`;
+}
+
+function updateLocalFeedUi() {
+  const brand = cameraBrandSelect.value;
+  const localUrl = buildLocalCameraUrl();
+  localUrlText.textContent = `Local address: ${localUrl}`;
+
+  const brandHint = brand === "hikvision"
+    ? "Likely Hikvision. Opening the local web interface should prompt for the camera login."
+    : brand === "milesight"
+      ? "Likely Milesight. Opening the local web interface should prompt for the camera login."
+      : "Open the local web interface and log in on the camera LAN if prompted.";
+
+  localHelpText.textContent = `${brandHint} Hosted web apps usually cannot auto-scan your local network, so direct browser detection is limited.`;
+
+  setLocalFeedSettings({
+    ip: localIpInput.value.trim() || "192.168.8.101",
+    port: localPortInput.value.trim() || "80",
+    brand
+  });
+}
+
 function cleanupObjectUrl() {
   if (currentObjectUrl) {
     URL.revokeObjectURL(currentObjectUrl);
@@ -141,27 +194,40 @@ function cleanupHls() {
 function switchTab(tab) {
   currentTab = tab;
   const isSnapshot = tab === "snapshot";
+  const isLive = tab === "live";
+  const isLocal = tab === "local";
 
   snapshotTabButton.classList.toggle("active", isSnapshot);
-  liveTabButton.classList.toggle("active", !isSnapshot);
+  liveTabButton.classList.toggle("active", isLive);
+  localTabButton.classList.toggle("active", isLocal);
   snapshotTabButton.setAttribute("aria-selected", String(isSnapshot));
-  liveTabButton.setAttribute("aria-selected", String(!isSnapshot));
+  liveTabButton.setAttribute("aria-selected", String(isLive));
+  localTabButton.setAttribute("aria-selected", String(isLocal));
   snapshotPanel.hidden = !isSnapshot;
-  livePanel.hidden = isSnapshot;
-  viewerTitle.textContent = isSnapshot ? "Live Snapshot" : "Live Feed";
-  refreshButton.textContent = isSnapshot ? "Refresh Snapshot" : "Refresh Live Feed";
+  livePanel.hidden = !isLive;
+  localPanel.hidden = !isLocal;
+  viewerTitle.textContent = isSnapshot ? "Live Snapshot" : isLive ? "Live Feed" : "Local Feed";
+  refreshButton.textContent = isSnapshot ? "Refresh Snapshot" : isLive ? "Refresh Live Feed" : "Refresh Local Feed";
   setStatus(
     currentCameraId
       ? isSnapshot
         ? "Ready to refresh the latest snapshot."
-        : "Ready to load the live feed."
+        : isLive
+          ? "Ready to load the live feed."
+          : "Ready to open the local camera feed."
       : isSnapshot
         ? "Enter a camera ID to load a snapshot."
-        : "Enter a camera ID to load a live feed."
+        : isLive
+          ? "Enter a camera ID to load a live feed."
+          : "Enter a camera ID to prepare the local feed."
   );
 
-  if (currentCameraId) {
+  if (currentCameraId && !isLocal) {
     loadCurrentView(currentCameraId);
+  }
+
+  if (isLocal) {
+    updateLocalFeedUi();
   }
 }
 
@@ -312,6 +378,16 @@ function loadCurrentView(cameraId) {
     return loadLiveFeed(cameraId);
   }
 
+  if (currentTab === "local") {
+    currentCameraId = cameraId.trim();
+    cameraInput.value = currentCameraId;
+    currentCameraText.textContent = `Current camera: ${currentCameraId || "No camera selected yet."}`;
+    rememberCameraId(currentCameraId);
+    updateLocalFeedUi();
+    setStatus("Ready to open the local camera feed on the onsite network.", "success");
+    return;
+  }
+
   return loadSnapshot(cameraId);
 }
 
@@ -328,6 +404,7 @@ refreshButton.addEventListener("click", () => {
 
 snapshotTabButton.addEventListener("click", () => switchTab("snapshot"));
 liveTabButton.addEventListener("click", () => switchTab("live"));
+localTabButton.addEventListener("click", () => switchTab("local"));
 
 clearHistoryButton.addEventListener("click", () => {
   setSavedCameraIds([]);
@@ -339,5 +416,27 @@ clearTokenButton.addEventListener("click", () => {
   setSavedToken("");
 });
 
+openLocalCameraButton.addEventListener("click", () => {
+  const url = buildLocalCameraUrl();
+  updateLocalFeedUi();
+  window.open(url, "_blank", "noopener,noreferrer");
+});
+
+resetLocalDefaultsButton.addEventListener("click", () => {
+  localIpInput.value = "192.168.8.101";
+  localPortInput.value = "80";
+  cameraBrandSelect.value = "auto";
+  updateLocalFeedUi();
+});
+
+localIpInput.addEventListener("input", updateLocalFeedUi);
+localPortInput.addEventListener("input", updateLocalFeedUi);
+cameraBrandSelect.addEventListener("change", updateLocalFeedUi);
+
 authTokenInput.value = getSavedToken();
+const localFeedSettings = getLocalFeedSettings();
+localIpInput.value = localFeedSettings.ip;
+localPortInput.value = localFeedSettings.port;
+cameraBrandSelect.value = localFeedSettings.brand;
+updateLocalFeedUi();
 renderSavedCameraIds();
