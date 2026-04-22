@@ -1,10 +1,13 @@
 const STORAGE_KEY = "evercam-saved-camera-ids";
+const TOKEN_STORAGE_KEY = "evercam-auth-token";
 const MAX_SAVED = 8;
 
 const form = document.getElementById("snapshot-form");
 const cameraInput = document.getElementById("camera-id");
+const authTokenInput = document.getElementById("auth-token");
 const savedCameras = document.getElementById("saved-cameras");
 const clearHistoryButton = document.getElementById("clear-history");
+const clearTokenButton = document.getElementById("clear-token");
 const refreshButton = document.getElementById("refresh-button");
 const statusText = document.getElementById("status");
 const currentCameraText = document.getElementById("current-camera");
@@ -12,6 +15,7 @@ const snapshotImage = document.getElementById("snapshot-image");
 const snapshotPlaceholder = document.getElementById("snapshot-placeholder");
 
 let currentCameraId = "";
+let currentObjectUrl = "";
 
 function getSavedCameraIds() {
   try {
@@ -24,6 +28,14 @@ function getSavedCameraIds() {
 
 function setSavedCameraIds(ids) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+}
+
+function getSavedToken() {
+  return localStorage.getItem(TOKEN_STORAGE_KEY) || "";
+}
+
+function setSavedToken(token) {
+  localStorage.setItem(TOKEN_STORAGE_KEY, token);
 }
 
 function rememberCameraId(cameraId) {
@@ -89,12 +101,22 @@ function buildSnapshotUrl(cameraId) {
   return `https://media.evercam.io/v2/cameras/${encodedId}/live/snapshot?t=${Date.now()}`;
 }
 
-function loadSnapshot(cameraId) {
+function cleanupObjectUrl() {
+  if (currentObjectUrl) {
+    URL.revokeObjectURL(currentObjectUrl);
+    currentObjectUrl = "";
+  }
+}
+
+async function loadSnapshot(cameraId) {
   const normalized = cameraId.trim();
   if (!normalized) {
     setStatus("Enter a camera ID first.", "error");
     return;
   }
+
+  const token = authTokenInput.value.trim();
+  setSavedToken(token);
 
   currentCameraId = normalized;
   cameraInput.value = normalized;
@@ -107,22 +129,33 @@ function loadSnapshot(cameraId) {
   snapshotPlaceholder.hidden = false;
   snapshotPlaceholder.textContent = "Loading latest snapshot...";
 
-  const nextUrl = buildSnapshotUrl(normalized);
-  snapshotImage.onload = () => {
-    setStatus("Snapshot loaded.", "success");
+  cleanupObjectUrl();
+
+  try {
+    const response = await fetch(buildSnapshotUrl(normalized), {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    currentObjectUrl = URL.createObjectURL(blob);
+    snapshotImage.src = currentObjectUrl;
+    snapshotImage.alt = `Live snapshot for ${normalized}`;
     snapshotImage.hidden = false;
     snapshotPlaceholder.hidden = true;
-    snapshotImage.alt = `Live snapshot for ${normalized}`;
-  };
-
-  snapshotImage.onerror = () => {
-    setStatus("Could not load that camera. It may be private, unavailable, or the ID may be incorrect.", "error");
+    setStatus("Snapshot loaded.", "success");
+  } catch (error) {
+    const message = token
+      ? "Could not load that camera. Check the camera ID, token access, or browser CORS restrictions."
+      : "Could not load that camera. It may be private, unavailable, or the ID may be incorrect.";
+    setStatus(message, "error");
     snapshotImage.hidden = true;
     snapshotPlaceholder.hidden = false;
     snapshotPlaceholder.textContent = "Snapshot unavailable for this camera ID.";
-  };
-
-  snapshotImage.src = nextUrl;
+  }
 }
 
 form.addEventListener("submit", (event) => {
@@ -141,4 +174,10 @@ clearHistoryButton.addEventListener("click", () => {
   renderSavedCameraIds();
 });
 
+clearTokenButton.addEventListener("click", () => {
+  authTokenInput.value = "";
+  setSavedToken("");
+});
+
+authTokenInput.value = getSavedToken();
 renderSavedCameraIds();

@@ -85,6 +85,10 @@ h1 {
   font-weight: 700;
 }
 
+.token-label {
+  margin-top: 16px;
+}
+
 .form-row,
 .viewer-header,
 .helper-row {
@@ -105,7 +109,24 @@ input {
   font: inherit;
 }
 
+.token-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 92px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(23, 33, 43, 0.12);
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--ink);
+  font: inherit;
+}
+
 input:focus {
+  outline: 2px solid rgba(20, 92, 76, 0.25);
+  border-color: rgba(20, 92, 76, 0.45);
+}
+
+.token-input:focus {
   outline: 2px solid rgba(20, 92, 76, 0.25);
   border-color: rgba(20, 92, 76, 0.45);
 }
@@ -143,6 +164,11 @@ button:disabled {
   padding: 12px 14px;
   color: var(--accent-strong);
   background: var(--accent-soft);
+}
+
+.button-stack {
+  display: flex;
+  gap: 12px;
 }
 
 .helper-row {
@@ -252,5 +278,9 @@ button:disabled {
   .primary-button,
   .ghost-button {
     width: 100%;
+  }
+
+  .button-stack {
+    flex-direction: column;
   }
 }

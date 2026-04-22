@@ -34,11 +34,25 @@
           >
           <button type="submit" class="primary-button">Get Snapshot</button>
         </div>
+
+        <label for="auth-token" class="label token-label">Bearer Token</label>
+        <textarea
+          id="auth-token"
+          name="authToken"
+          class="token-input"
+          placeholder="Optional: paste an Evercam bearer token for private cameras"
+          autocomplete="off"
+          spellcheck="false"
+          rows="3"
+        ></textarea>
       </form>
 
       <div class="helper-row">
-        <p class="helper-text">Saved locally in this browser so installers do not need to keep retyping camera IDs.</p>
-        <button id="clear-history" type="button" class="ghost-button">Clear Saved IDs</button>
+        <p class="helper-text">Camera IDs and any token entered here are saved only in this browser on this device.</p>
+        <div class="button-stack">
+          <button id="clear-token" type="button" class="ghost-button">Clear Token</button>
+          <button id="clear-history" type="button" class="ghost-button">Clear Saved IDs</button>
+        </div>
       </div>
 
       <div>
