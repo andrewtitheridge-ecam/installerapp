@@ -1,18 +1,16 @@
 const STORAGE_KEY = "evercam-saved-camera-ids";
-const TOKEN_STORAGE_KEY = "evercam-auth-token";
+const REMEMBERED_USERNAME_KEY = "evercam-remembered-username";
 const LOCAL_FEED_STORAGE_KEY = "evercam-local-feed-settings";
 const MAX_SAVED = 8;
 
-const jobForm = document.getElementById("job-form");
-const jobInput = document.getElementById("job-id");
-const form = document.getElementById("camera-form");
-const cameraInput = document.getElementById("camera-id");
-const authTokenInput = document.getElementById("auth-token");
+const lookupForm = document.getElementById("lookup-form");
+const lookupInput = document.getElementById("lookup-id");
 const authUsernameInput = document.getElementById("auth-username");
 const authPasswordInput = document.getElementById("auth-password");
+const rememberLoginInput = document.getElementById("remember-login");
 const savedCameras = document.getElementById("saved-cameras");
 const clearHistoryButton = document.getElementById("clear-history");
-const clearTokenButton = document.getElementById("clear-token");
+const clearLoginButton = document.getElementById("clear-login");
 const refreshButton = document.getElementById("refresh-button");
 const snapshotTabButton = document.getElementById("snapshot-tab");
 const liveTabButton = document.getElementById("live-tab");
@@ -34,7 +32,7 @@ const openLocalCameraButton = document.getElementById("open-local-camera");
 const resetLocalDefaultsButton = document.getElementById("reset-local-defaults");
 const localUrlText = document.getElementById("local-url");
 const localHelpText = document.getElementById("local-help");
-const jobStatusText = document.getElementById("job-status");
+const lookupStatusText = document.getElementById("lookup-status");
 const jobResult = document.getElementById("job-result");
 const jobNameText = document.getElementById("job-name");
 const jobMetaText = document.getElementById("job-meta");
@@ -64,12 +62,16 @@ function setSavedCameraIds(ids) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
 }
 
-function getSavedToken() {
-  return localStorage.getItem(TOKEN_STORAGE_KEY) || "";
+function getRememberedUsername() {
+  return localStorage.getItem(REMEMBERED_USERNAME_KEY) || "";
 }
 
-function setSavedToken(token) {
-  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+function setRememberedUsername(username) {
+  if (!username) {
+    localStorage.removeItem(REMEMBERED_USERNAME_KEY);
+    return;
+  }
+  localStorage.setItem(REMEMBERED_USERNAME_KEY, username);
 }
 
 function getLocalFeedSettings() {
@@ -126,7 +128,7 @@ function renderSavedCameraIds() {
     loadButton.className = "saved-camera-load";
     loadButton.textContent = cameraId;
     loadButton.addEventListener("click", () => {
-      cameraInput.value = cameraId;
+      lookupInput.value = cameraId;
       loadCurrentView(cameraId);
     });
 
@@ -147,9 +149,9 @@ function setStatus(message, tone = "") {
   statusText.className = `status${tone ? ` ${tone}` : ""}`;
 }
 
-function setJobStatus(message, tone = "") {
-  jobStatusText.textContent = message;
-  jobStatusText.className = `helper-text${tone ? ` ${tone}` : ""}`;
+function setLookupStatus(message, tone = "") {
+  lookupStatusText.textContent = message;
+  lookupStatusText.className = `helper-text${tone ? ` ${tone}` : ""}`;
 }
 
 function buildSnapshotUrl(cameraId) {
@@ -199,24 +201,18 @@ function updateLocalFeedUi() {
 }
 
 async function getAuthHeaders() {
-  const token = authTokenInput.value.trim();
   const username = authUsernameInput.value.trim();
   const password = authPasswordInput.value;
 
-  if (token && (username || password)) {
-    throw new Error("Use either bearer token or username/password, not both.");
-  }
-
-  if (token) {
-    setSavedToken(token);
-    sessionAuthToken = "";
-    return { Authorization: `Bearer ${token}` };
-  }
-
   if (!username || !password) {
-    setSavedToken("");
     sessionAuthToken = "";
     return {};
+  }
+
+  if (rememberLoginInput.checked) {
+    setRememberedUsername(username);
+  } else {
+    setRememberedUsername("");
   }
 
   const loginResponse = await fetch("https://media.evercam.io/v2/auth/login", {
@@ -247,7 +243,7 @@ async function getAuthHeaders() {
 }
 
 function getCurrentAuthToken() {
-  return authTokenInput.value.trim() || sessionAuthToken || "";
+  return sessionAuthToken || "";
 }
 
 function renderJobResult(job) {
@@ -281,7 +277,7 @@ function renderJobResult(job) {
     loadButton.textContent = camera.id;
     loadButton.title = camera.name || camera.id;
     loadButton.addEventListener("click", () => {
-      cameraInput.value = camera.id;
+      lookupInput.value = camera.id;
       loadCurrentView(camera.id);
     });
 
@@ -309,7 +305,7 @@ function renderProjectResult(projectId, cameras) {
     loadButton.textContent = camera.id;
     loadButton.title = camera.name || camera.id;
     loadButton.addEventListener("click", () => {
-      cameraInput.value = camera.id.toLowerCase();
+      lookupInput.value = camera.id.toLowerCase();
       loadCurrentView(camera.id.toLowerCase());
     });
 
@@ -396,7 +392,7 @@ async function loadSnapshot(cameraId) {
   }
 
   currentCameraId = normalized;
-  cameraInput.value = normalized;
+  lookupInput.value = normalized;
   refreshButton.disabled = false;
   currentCameraText.textContent = `Current camera: ${normalized}`;
   setStatus("Loading snapshot...", "");
@@ -427,7 +423,7 @@ async function loadSnapshot(cameraId) {
     snapshotPlaceholder.hidden = true;
     setStatus("Snapshot loaded.", "success");
   } catch (error) {
-    const message = authTokenInput.value.trim() || authUsernameInput.value.trim()
+    const message = authUsernameInput.value.trim()
       ? "Could not load that camera. Check the camera ID, token access, or browser CORS restrictions."
       : "Could not load that camera. It may be private, unavailable, or the ID may be incorrect.";
     setStatus(message, "error");
@@ -445,7 +441,7 @@ async function loadLiveFeed(cameraId) {
   }
 
   currentCameraId = normalized;
-  cameraInput.value = normalized;
+  lookupInput.value = normalized;
   refreshButton.disabled = false;
   currentCameraText.textContent = `Current camera: ${normalized}`;
   setStatus("Loading live feed...", "");
@@ -535,7 +531,7 @@ function loadCurrentView(cameraId) {
 
   if (currentTab === "local") {
     currentCameraId = normalized;
-    cameraInput.value = currentCameraId;
+    lookupInput.value = currentCameraId;
     currentCameraText.textContent = `Current camera: ${currentCameraId || "No camera selected yet."}`;
     rememberCameraId(currentCameraId);
     updateLocalFeedUi();
@@ -545,60 +541,6 @@ function loadCurrentView(cameraId) {
 
   return loadSnapshot(normalized);
 }
-
-form.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const value = cameraInput.value.trim().toLowerCase();
-  cameraInput.value = value;
-  if (looksLikeProjectId(value)) {
-    loadProjectCameras(value);
-    return;
-  }
-  hideProjectResult();
-  loadCurrentView(value);
-});
-
-jobForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const jobId = jobInput.value.trim();
-  if (!jobId) {
-    jobResult.hidden = true;
-    setJobStatus("Job number is optional. Enter one to load linked cameras, or use the camera ID field below.", "");
-    return;
-  }
-
-  setJobStatus("Finding job...", "");
-  jobResult.hidden = true;
-
-  try {
-    const response = await fetch(`/api/zoho-job?jobId=${encodeURIComponent(jobId)}`);
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.error || "Job lookup failed.");
-    }
-
-    renderJobResult(result);
-    setJobStatus(`Loaded ${result.cameras.length} camera${result.cameras.length === 1 ? "" : "s"} for job ${result.jobNumber}.`, "success");
-
-    if (result.cameras.length) {
-      cameraInput.value = result.cameras[0].id;
-      currentCameraId = result.cameras[0].id;
-      currentCameraText.textContent = `Current camera: ${currentCameraId}`;
-      refreshButton.disabled = false;
-    }
-  } catch (error) {
-    currentJob = null;
-    jobResult.hidden = true;
-    const message = error.message || "Could not load that job.";
-    if (message.includes("Missing Zoho environment variables")) {
-      setJobStatus("Job lookup is not configured in Vercel yet. Add the Zoho environment variables, or use the camera ID field below.", "error");
-      return;
-    }
-    setJobStatus(message, "error");
-  }
-});
-
 refreshButton.addEventListener("click", () => {
   if (currentCameraId) {
     loadCurrentView(currentCameraId);
@@ -614,9 +556,11 @@ clearHistoryButton.addEventListener("click", () => {
   renderSavedCameraIds();
 });
 
-clearTokenButton.addEventListener("click", () => {
-  authTokenInput.value = "";
-  setSavedToken("");
+clearLoginButton.addEventListener("click", () => {
+  authUsernameInput.value = "";
+  authPasswordInput.value = "";
+  rememberLoginInput.checked = false;
+  setRememberedUsername("");
   sessionAuthToken = "";
 });
 
@@ -637,22 +581,22 @@ localIpInput.addEventListener("input", updateLocalFeedUi);
 localPortInput.addEventListener("input", updateLocalFeedUi);
 cameraBrandSelect.addEventListener("change", updateLocalFeedUi);
 
-authTokenInput.value = getSavedToken();
+authUsernameInput.value = getRememberedUsername();
+rememberLoginInput.checked = Boolean(authUsernameInput.value);
 const localFeedSettings = getLocalFeedSettings();
 localIpInput.value = localFeedSettings.ip;
 localPortInput.value = localFeedSettings.port;
 cameraBrandSelect.value = localFeedSettings.brand;
 updateLocalFeedUi();
 renderSavedCameraIds();
-cameraInput.setAttribute("autocapitalize", "none");
-cameraInput.addEventListener("input", () => {
-  const start = cameraInput.selectionStart;
-  const end = cameraInput.selectionEnd;
-  const lower = cameraInput.value.toLowerCase();
-  if (cameraInput.value !== lower) {
-    cameraInput.value = lower;
+lookupInput.addEventListener("input", () => {
+  const start = lookupInput.selectionStart;
+  const end = lookupInput.selectionEnd;
+  const lower = lookupInput.value.toLowerCase();
+  if (lookupInput.value !== lower) {
+    lookupInput.value = lower;
     if (start !== null && end !== null) {
-      cameraInput.setSelectionRange(start, end);
+      lookupInput.setSelectionRange(start, end);
     }
   }
 });
@@ -681,7 +625,7 @@ async function loadProjectCameras(projectId) {
       throw new Error("No cameras found for that project.");
     }
 
-    cameraInput.value = cameras[0].id;
+    lookupInput.value = cameras[0].id;
     currentCameraId = cameras[0].id;
     currentCameraText.textContent = `Current camera: ${currentCameraId}`;
     refreshButton.disabled = false;
@@ -692,10 +636,69 @@ async function loadProjectCameras(projectId) {
       hideProjectResult();
     }
 
-    setStatus(`Loaded ${cameras.length} camera${cameras.length === 1 ? "" : "s"} for project ${projectId}.`, "success");
+    setLookupStatus(`Loaded ${cameras.length} camera${cameras.length === 1 ? "" : "s"} for project ${projectId}.`, "success");
     switchTab("snapshot");
     await loadSnapshot(cameras[0].id);
   } catch (error) {
-    setStatus(error.message || "Could not load that project.", "error");
+    setLookupStatus(error.message || "Could not load that project.", "error");
   }
 }
+
+lookupForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const value = lookupInput.value.trim().toLowerCase();
+  lookupInput.value = value;
+
+  if (!value) {
+    setLookupStatus("Enter a camera ID, project ID, or 5-digit job number.", "");
+    return;
+  }
+
+  if (/^\d{5}$/.test(value)) {
+    const jobId = value;
+    setLookupStatus("Finding job...", "");
+    hideProjectResult();
+    jobResult.hidden = true;
+
+    try {
+      const response = await fetch(`/api/zoho-job?jobId=${encodeURIComponent(jobId)}`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Job lookup failed.");
+      }
+
+      renderJobResult(result);
+      setLookupStatus(`Loaded ${result.cameras.length} camera${result.cameras.length === 1 ? "" : "s"} for job ${result.jobNumber}.`, "success");
+
+      if (result.cameras.length) {
+        lookupInput.value = result.cameras[0].id;
+        currentCameraId = result.cameras[0].id;
+        currentCameraText.textContent = `Current camera: ${currentCameraId}`;
+        refreshButton.disabled = false;
+        switchTab("snapshot");
+        await loadSnapshot(result.cameras[0].id);
+      }
+    } catch (error) {
+      currentJob = null;
+      jobResult.hidden = true;
+      const message = error.message || "Could not load that job.";
+      if (message.includes("Missing Zoho environment variables")) {
+        setLookupStatus("Job lookup is not configured in Vercel yet. Add the Zoho environment variables, or use a camera or project ID instead.", "error");
+        return;
+      }
+      setLookupStatus(message, "error");
+    }
+    return;
+  }
+
+  jobResult.hidden = true;
+  if (looksLikeProjectId(value)) {
+    await loadProjectCameras(value);
+    return;
+  }
+
+  hideProjectResult();
+  setLookupStatus("Loading camera...", "");
+  await loadCurrentView(value);
+});
