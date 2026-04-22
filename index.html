@@ -74,10 +74,35 @@
           spellcheck="false"
           rows="3"
         ></textarea>
+
+        <div class="local-grid auth-grid">
+          <div>
+            <label for="auth-username" class="label token-label">Evercam Username</label>
+            <input
+              id="auth-username"
+              name="authUsername"
+              type="text"
+              placeholder="Optional: your Evercam email"
+              autocomplete="username"
+              spellcheck="false"
+            >
+          </div>
+          <div class="auth-password-wrap">
+            <label for="auth-password" class="label token-label">Evercam Password</label>
+            <input
+              id="auth-password"
+              name="authPassword"
+              type="password"
+              placeholder="Optional"
+              autocomplete="current-password"
+              spellcheck="false"
+            >
+          </div>
+        </div>
       </form>
 
       <div class="helper-row">
-        <p class="helper-text">Camera IDs and any token entered here are saved only in this browser on this device.</p>
+        <p class="helper-text">Job number is optional. For private cameras, use either a bearer token or Evercam username/password. The user must have member access or above on the selected camera. Credentials entered here are saved only in this browser on this device.</p>
         <div class="button-stack">
           <button id="clear-token" type="button" class="ghost-button">Clear Token</button>
           <button id="clear-history" type="button" class="ghost-button">Clear Saved IDs</button>

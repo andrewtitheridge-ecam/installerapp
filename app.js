@@ -8,6 +8,8 @@ const jobInput = document.getElementById("job-id");
 const form = document.getElementById("camera-form");
 const cameraInput = document.getElementById("camera-id");
 const authTokenInput = document.getElementById("auth-token");
+const authUsernameInput = document.getElementById("auth-username");
+const authPasswordInput = document.getElementById("auth-password");
 const savedCameras = document.getElementById("saved-cameras");
 const clearHistoryButton = document.getElementById("clear-history");
 const clearTokenButton = document.getElementById("clear-token");
@@ -186,6 +188,48 @@ function updateLocalFeedUi() {
   });
 }
 
+async function getAuthHeaders() {
+  const token = authTokenInput.value.trim();
+  if (token) {
+    setSavedToken(token);
+    return { Authorization: `Bearer ${token}` };
+  }
+
+  const username = authUsernameInput.value.trim();
+  const password = authPasswordInput.value;
+  if (!username || !password) {
+    setSavedToken("");
+    return {};
+  }
+
+  const loginResponse = await fetch("https://media.evercam.io/v2/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password })
+  });
+
+  if (!loginResponse.ok) {
+    let message = "Evercam login failed.";
+    try {
+      const errorJson = await loginResponse.json();
+      message = errorJson.message || errorJson.error || message;
+    } catch {
+      // Ignore JSON parsing errors and keep generic message.
+    }
+    throw new Error(message);
+  }
+
+  const loginJson = await loginResponse.json();
+  const loginToken = loginJson.token;
+  if (!loginToken) {
+    throw new Error("Evercam login succeeded but no token was returned.");
+  }
+
+  authTokenInput.value = loginToken;
+  setSavedToken(loginToken);
+  return { Authorization: `Bearer ${loginToken}` };
+}
+
 function renderJobResult(job) {
   currentJob = job;
   jobResult.hidden = false;
@@ -291,9 +335,6 @@ async function loadSnapshot(cameraId) {
     return;
   }
 
-  const token = authTokenInput.value.trim();
-  setSavedToken(token);
-
   currentCameraId = normalized;
   cameraInput.value = normalized;
   refreshButton.disabled = false;
@@ -309,8 +350,9 @@ async function loadSnapshot(cameraId) {
   cleanupHls();
 
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch(buildSnapshotUrl(normalized), {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
+      headers
     });
 
     if (!response.ok) {
@@ -325,7 +367,7 @@ async function loadSnapshot(cameraId) {
     snapshotPlaceholder.hidden = true;
     setStatus("Snapshot loaded.", "success");
   } catch (error) {
-    const message = token
+    const message = authTokenInput.value.trim() || authUsernameInput.value.trim()
       ? "Could not load that camera. Check the camera ID, token access, or browser CORS restrictions."
       : "Could not load that camera. It may be private, unavailable, or the ID may be incorrect.";
     setStatus(message, "error");
@@ -341,9 +383,6 @@ async function loadLiveFeed(cameraId) {
     setStatus("Enter a camera ID first.", "error");
     return;
   }
-
-  const token = authTokenInput.value.trim();
-  setSavedToken(token);
 
   currentCameraId = normalized;
   cameraInput.value = normalized;
@@ -363,8 +402,10 @@ async function loadLiveFeed(cameraId) {
   cleanupHls();
 
   try {
+    const headers = await getAuthHeaders();
+    const token = authTokenInput.value.trim();
     const detailsResponse = await fetch(buildCameraDetailsUrl(normalized), {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
+      headers
     });
 
     if (!detailsResponse.ok) {

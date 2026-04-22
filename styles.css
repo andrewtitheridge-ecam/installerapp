@@ -103,6 +103,14 @@ h1 {
   justify-content: start;
 }
 
+.auth-grid {
+  grid-template-columns: minmax(260px, 420px) minmax(220px, 320px);
+}
+
+.auth-password-wrap {
+  min-width: 0;
+}
+
 .local-select {
   min-height: 58px;
   resize: none;
