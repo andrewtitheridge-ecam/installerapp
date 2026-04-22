@@ -115,6 +115,11 @@ function buildHlsUrl(cameraId) {
   return `https://media.evercam.io/v2/cameras/${encodedId}/hls?t=${Date.now()}`;
 }
 
+function buildCameraDetailsUrl(cameraId) {
+  const encodedId = encodeURIComponent(cameraId);
+  return `https://media.evercam.io/v2/cameras/${encodedId}`;
+}
+
 function cleanupObjectUrl() {
   if (currentObjectUrl) {
     URL.revokeObjectURL(currentObjectUrl);
@@ -238,9 +243,19 @@ async function loadLiveFeed(cameraId) {
   cleanupObjectUrl();
   cleanupHls();
 
-  const hlsUrl = buildHlsUrl(normalized);
-
   try {
+    const detailsResponse = await fetch(buildCameraDetailsUrl(normalized), {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+
+    if (!detailsResponse.ok) {
+      throw new Error(`HTTP ${detailsResponse.status}`);
+    }
+
+    const detailsJson = await detailsResponse.json();
+    const camera = Array.isArray(detailsJson.cameras) ? detailsJson.cameras[0] : null;
+    const hlsUrl = camera?.proxy_url?.hls || buildHlsUrl(normalized);
+
     if (window.Hls && window.Hls.isSupported()) {
       hlsPlayer = new window.Hls({
         xhrSetup: (xhr) => {
