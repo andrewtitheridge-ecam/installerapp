@@ -292,8 +292,11 @@ function renderJobResult(job) {
 
 function renderProjectResult(projectId, cameras) {
   projectResult.hidden = false;
+  projectResult.classList.toggle("project-emphasis", cameras.length > 1);
   projectNameText.textContent = projectId;
-  projectMetaText.textContent = `${cameras.length} camera${cameras.length === 1 ? "" : "s"} found for this project.`;
+  projectMetaText.textContent = cameras.length > 1
+    ? `${cameras.length} cameras found for this project. The first snapshot has been loaded automatically.`
+    : `${cameras.length} camera found for this project.`;
   projectCameras.innerHTML = "";
 
   cameras.forEach((camera) => {
@@ -317,6 +320,7 @@ function renderProjectResult(projectId, cameras) {
 
 function hideProjectResult() {
   projectResult.hidden = true;
+  projectResult.classList.remove("project-emphasis");
   projectNameText.textContent = "";
   projectMetaText.textContent = "";
   projectCameras.innerHTML = "";
@@ -677,12 +681,20 @@ async function loadProjectCameras(projectId) {
       throw new Error("No cameras found for that project.");
     }
 
-    renderProjectResult(projectId, cameras);
-    setStatus(`Loaded ${cameras.length} camera${cameras.length === 1 ? "" : "s"} for project ${projectId}.`, "success");
     cameraInput.value = cameras[0].id;
     currentCameraId = cameras[0].id;
     currentCameraText.textContent = `Current camera: ${currentCameraId}`;
     refreshButton.disabled = false;
+
+    if (cameras.length > 1) {
+      renderProjectResult(projectId, cameras);
+    } else {
+      hideProjectResult();
+    }
+
+    setStatus(`Loaded ${cameras.length} camera${cameras.length === 1 ? "" : "s"} for project ${projectId}.`, "success");
+    switchTab("snapshot");
+    await loadSnapshot(cameras[0].id);
   } catch (error) {
     setStatus(error.message || "Could not load that project.", "error");
   }
