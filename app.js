@@ -2,20 +2,29 @@ const STORAGE_KEY = "evercam-saved-camera-ids";
 const TOKEN_STORAGE_KEY = "evercam-auth-token";
 const MAX_SAVED = 8;
 
-const form = document.getElementById("snapshot-form");
+const form = document.getElementById("camera-form");
 const cameraInput = document.getElementById("camera-id");
 const authTokenInput = document.getElementById("auth-token");
 const savedCameras = document.getElementById("saved-cameras");
 const clearHistoryButton = document.getElementById("clear-history");
 const clearTokenButton = document.getElementById("clear-token");
 const refreshButton = document.getElementById("refresh-button");
+const snapshotTabButton = document.getElementById("snapshot-tab");
+const liveTabButton = document.getElementById("live-tab");
+const viewerTitle = document.getElementById("viewer-title");
+const snapshotPanel = document.getElementById("snapshot-panel");
+const livePanel = document.getElementById("live-panel");
 const statusText = document.getElementById("status");
 const currentCameraText = document.getElementById("current-camera");
 const snapshotImage = document.getElementById("snapshot-image");
 const snapshotPlaceholder = document.getElementById("snapshot-placeholder");
+const liveVideo = document.getElementById("live-video");
+const livePlaceholder = document.getElementById("live-placeholder");
 
 let currentCameraId = "";
 let currentObjectUrl = "";
+let currentTab = "snapshot";
+let hlsPlayer = null;
 
 function getSavedCameraIds() {
   try {
@@ -76,7 +85,7 @@ function renderSavedCameraIds() {
     loadButton.textContent = cameraId;
     loadButton.addEventListener("click", () => {
       cameraInput.value = cameraId;
-      loadSnapshot(cameraId);
+      loadCurrentView(cameraId);
     });
 
     const removeButton = document.createElement("button");
@@ -101,10 +110,53 @@ function buildSnapshotUrl(cameraId) {
   return `https://media.evercam.io/v2/cameras/${encodedId}/live/snapshot?t=${Date.now()}`;
 }
 
+function buildHlsUrl(cameraId) {
+  const encodedId = encodeURIComponent(cameraId);
+  return `https://media.evercam.io/v2/cameras/${encodedId}/hls?t=${Date.now()}`;
+}
+
 function cleanupObjectUrl() {
   if (currentObjectUrl) {
     URL.revokeObjectURL(currentObjectUrl);
     currentObjectUrl = "";
+  }
+}
+
+function cleanupHls() {
+  if (hlsPlayer) {
+    hlsPlayer.destroy();
+    hlsPlayer = null;
+  }
+
+  liveVideo.pause();
+  liveVideo.removeAttribute("src");
+  liveVideo.load();
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  const isSnapshot = tab === "snapshot";
+
+  snapshotTabButton.classList.toggle("active", isSnapshot);
+  liveTabButton.classList.toggle("active", !isSnapshot);
+  snapshotTabButton.setAttribute("aria-selected", String(isSnapshot));
+  liveTabButton.setAttribute("aria-selected", String(!isSnapshot));
+  snapshotPanel.hidden = !isSnapshot;
+  livePanel.hidden = isSnapshot;
+  viewerTitle.textContent = isSnapshot ? "Live Snapshot" : "Live Feed";
+  refreshButton.textContent = isSnapshot ? "Refresh Snapshot" : "Refresh Live Feed";
+  setStatus(
+    currentCameraId
+      ? isSnapshot
+        ? "Ready to refresh the latest snapshot."
+        : "Ready to load the live feed."
+      : isSnapshot
+        ? "Enter a camera ID to load a snapshot."
+        : "Enter a camera ID to load a live feed."
+  );
+
+  if (currentCameraId) {
+    loadCurrentView(currentCameraId);
   }
 }
 
@@ -130,6 +182,7 @@ async function loadSnapshot(cameraId) {
   snapshotPlaceholder.textContent = "Loading latest snapshot...";
 
   cleanupObjectUrl();
+  cleanupHls();
 
   try {
     const response = await fetch(buildSnapshotUrl(normalized), {
@@ -158,16 +211,108 @@ async function loadSnapshot(cameraId) {
   }
 }
 
+async function loadLiveFeed(cameraId) {
+  const normalized = cameraId.trim();
+  if (!normalized) {
+    setStatus("Enter a camera ID first.", "error");
+    return;
+  }
+
+  const token = authTokenInput.value.trim();
+  setSavedToken(token);
+
+  currentCameraId = normalized;
+  cameraInput.value = normalized;
+  refreshButton.disabled = false;
+  currentCameraText.textContent = `Current camera: ${normalized}`;
+  setStatus("Loading live feed...", "");
+  rememberCameraId(normalized);
+
+  snapshotImage.hidden = true;
+  snapshotPlaceholder.hidden = false;
+  snapshotPlaceholder.textContent = "Snapshot will appear here.";
+  liveVideo.hidden = true;
+  livePlaceholder.hidden = false;
+  livePlaceholder.textContent = "Connecting to live feed...";
+
+  cleanupObjectUrl();
+  cleanupHls();
+
+  const hlsUrl = buildHlsUrl(normalized);
+
+  try {
+    if (window.Hls && window.Hls.isSupported()) {
+      hlsPlayer = new window.Hls({
+        xhrSetup: (xhr) => {
+          if (token) {
+            xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+          }
+        }
+      });
+      hlsPlayer.loadSource(hlsUrl);
+      hlsPlayer.attachMedia(liveVideo);
+      hlsPlayer.on(window.Hls.Events.MANIFEST_PARSED, () => {
+        liveVideo.hidden = false;
+        livePlaceholder.hidden = true;
+        liveVideo.play().catch(() => {});
+        setStatus("Live feed loaded.", "success");
+      });
+      hlsPlayer.on(window.Hls.Events.ERROR, (_event, data) => {
+        if (data && data.fatal) {
+          cleanupHls();
+          liveVideo.hidden = true;
+          livePlaceholder.hidden = false;
+          livePlaceholder.textContent = "Live feed unavailable for this camera ID.";
+          setStatus("Could not load the live feed. Check camera support, token access, or browser restrictions.", "error");
+        }
+      });
+      return;
+    }
+
+    if (liveVideo.canPlayType("application/vnd.apple.mpegurl")) {
+      liveVideo.src = hlsUrl;
+      liveVideo.hidden = false;
+      livePlaceholder.hidden = true;
+      liveVideo.addEventListener("loadedmetadata", () => {
+        liveVideo.play().catch(() => {});
+      }, { once: true });
+      setStatus(token
+        ? "Live feed may require browser support for bearer-authenticated HLS."
+        : "Live feed loaded.", token ? "error" : "success");
+      return;
+    }
+
+    throw new Error("HLS unsupported");
+  } catch (error) {
+    cleanupHls();
+    liveVideo.hidden = true;
+    livePlaceholder.hidden = false;
+    livePlaceholder.textContent = "Live feed unavailable for this camera ID.";
+    setStatus("Could not load the live feed. This camera may not support HLS, or the browser may block it.", "error");
+  }
+}
+
+function loadCurrentView(cameraId) {
+  if (currentTab === "live") {
+    return loadLiveFeed(cameraId);
+  }
+
+  return loadSnapshot(cameraId);
+}
+
 form.addEventListener("submit", (event) => {
   event.preventDefault();
-  loadSnapshot(cameraInput.value);
+  loadCurrentView(cameraInput.value);
 });
 
 refreshButton.addEventListener("click", () => {
   if (currentCameraId) {
-    loadSnapshot(currentCameraId);
+    loadCurrentView(currentCameraId);
   }
 });
+
+snapshotTabButton.addEventListener("click", () => switchTab("snapshot"));
+liveTabButton.addEventListener("click", () => switchTab("live"));
 
 clearHistoryButton.addEventListener("click", () => {
   setSavedCameraIds([]);

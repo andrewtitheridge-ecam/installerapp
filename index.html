@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Evercam Snapshot Viewer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-</head>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  </head>
 <body>
   <main class="app-shell">
     <section class="hero">
@@ -20,7 +21,7 @@
     </section>
 
     <section class="panel controls-panel">
-      <form id="snapshot-form" class="snapshot-form">
+      <form id="camera-form" class="snapshot-form">
         <label for="camera-id" class="label">Camera ID</label>
         <div class="form-row">
           <input
@@ -32,7 +33,7 @@
             spellcheck="false"
             required
           >
-          <button type="submit" class="primary-button">Get Snapshot</button>
+          <button type="submit" class="primary-button">Load Camera</button>
         </div>
 
         <label for="auth-token" class="label token-label">Bearer Token</label>
@@ -62,20 +63,36 @@
     </section>
 
     <section class="panel viewer-panel">
+      <div class="tab-row" role="tablist" aria-label="Camera views">
+        <button id="snapshot-tab" type="button" class="tab-button active" role="tab" aria-selected="true">Snapshot</button>
+        <button id="live-tab" type="button" class="tab-button" role="tab" aria-selected="false">Live Feed</button>
+      </div>
+
       <div class="viewer-header">
         <div>
-          <p class="section-title">Live Snapshot</p>
+          <p id="viewer-title" class="section-title">Live Snapshot</p>
           <p id="current-camera" class="current-camera">No camera selected yet.</p>
         </div>
-        <button id="refresh-button" type="button" class="ghost-button" disabled>Refresh Snapshot</button>
+        <button id="refresh-button" type="button" class="ghost-button" disabled>Refresh View</button>
       </div>
 
       <p id="status" class="status">Enter a camera ID to load a snapshot.</p>
 
-      <div class="snapshot-frame">
-        <img id="snapshot-image" alt="" hidden>
-        <div id="snapshot-placeholder" class="placeholder">
-          Snapshot will appear here.
+      <div id="snapshot-panel" class="view-panel">
+        <div class="snapshot-frame">
+          <img id="snapshot-image" alt="" hidden>
+          <div id="snapshot-placeholder" class="placeholder">
+            Snapshot will appear here.
+          </div>
+        </div>
+      </div>
+
+      <div id="live-panel" class="view-panel" hidden>
+        <div class="snapshot-frame">
+          <video id="live-video" class="live-video" controls autoplay muted playsinline hidden></video>
+          <div id="live-placeholder" class="placeholder">
+            Live feed will appear here.
+          </div>
         </div>
       </div>
     </section>

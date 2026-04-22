@@ -70,6 +70,26 @@ h1 {
   box-shadow: var(--shadow);
 }
 
+.tab-row {
+  display: inline-flex;
+  gap: 10px;
+  padding: 8px;
+  margin-bottom: 16px;
+  border-radius: 18px;
+  background: rgba(20, 92, 76, 0.08);
+}
+
+.tab-button {
+  padding: 10px 16px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.tab-button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
 .controls-panel {
   padding: 24px;
   margin-bottom: 20px;
@@ -253,6 +273,13 @@ button:disabled {
   height: auto;
 }
 
+.live-video {
+  display: block;
+  width: 100%;
+  min-height: 360px;
+  background: #10191d;
+}
+
 .placeholder {
   display: grid;
   place-items: center;
@@ -282,5 +309,13 @@ button:disabled {
 
   .button-stack {
     flex-direction: column;
+  }
+
+  .tab-row {
+    width: 100%;
+  }
+
+  .tab-button {
+    flex: 1;
   }
 }
