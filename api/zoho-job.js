@@ -13,16 +13,20 @@ function buildWorksheetUrl(job) {
     return "";
   }
 
-  const params = new URLSearchParams({
+  const params = {
     job_name: job.Name || "",
     job_id: job.Job_ID_Number || "",
     type: job.Job_Type || "",
     project_name: job.Projex?.name || "",
     address: job.Address || job.Installation_Address || "",
     referrername: job.id || ""
-  });
+  };
 
-  return `${INSTALLATION_WORKSHEET_BASE_URL}?${params.toString()}`;
+  const query = Object.entries(params)
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join("&");
+
+  return `${INSTALLATION_WORKSHEET_BASE_URL}?${query}`;
 }
 
 async function getAccessToken() {
@@ -70,9 +74,11 @@ async function fetchJobDetails(accessToken, recordId) {
   const fields = [
     "Name",
     "Job_ID_Number",
+    "Job_Type",
     "Status",
     "Install_Date",
     "Requested_Install_Date",
+    "Address",
     "Deal_Name",
     "Projex",
     "Kit_Information",
