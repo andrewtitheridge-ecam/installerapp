@@ -96,9 +96,11 @@ h1 {
 
 .local-grid {
   display: grid;
-  grid-template-columns: 1fr 180px;
+  grid-template-columns: minmax(260px, 420px) 140px;
   gap: 16px;
   margin-bottom: 16px;
+  align-items: end;
+  justify-content: start;
 }
 
 .local-select {
@@ -113,6 +115,20 @@ h1 {
 
 .snapshot-form {
   margin-bottom: 16px;
+}
+
+.job-result {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(20, 92, 76, 0.06);
+}
+
+.job-summary {
+  display: grid;
+  gap: 6px;
 }
 
 .label {

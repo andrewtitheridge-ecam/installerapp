@@ -21,6 +21,34 @@
     </section>
 
     <section class="panel controls-panel">
+      <form id="job-form" class="snapshot-form">
+        <label for="job-id" class="label">Job Number</label>
+        <div class="form-row">
+          <input
+            id="job-id"
+            name="jobId"
+            type="text"
+            placeholder="e.g. 30361"
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <button type="submit" class="primary-button">Find Job</button>
+        </div>
+        <p id="job-status" class="helper-text">Enter a 5-digit job number to load the linked cameras from Zoho CRM.</p>
+      </form>
+
+      <div id="job-result" class="job-result" hidden>
+        <div class="job-summary">
+          <p class="section-title">Job Summary</p>
+          <p id="job-name" class="current-camera"></p>
+          <p id="job-meta" class="helper-text"></p>
+        </div>
+        <div>
+          <p class="section-title">Job Cameras</p>
+          <div id="job-cameras" class="saved-cameras"></div>
+        </div>
+      </div>
+
       <form id="camera-form" class="snapshot-form">
         <label for="camera-id" class="label">Camera ID</label>
         <div class="form-row">

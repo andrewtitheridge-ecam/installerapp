@@ -3,6 +3,8 @@ const TOKEN_STORAGE_KEY = "evercam-auth-token";
 const LOCAL_FEED_STORAGE_KEY = "evercam-local-feed-settings";
 const MAX_SAVED = 8;
 
+const jobForm = document.getElementById("job-form");
+const jobInput = document.getElementById("job-id");
 const form = document.getElementById("camera-form");
 const cameraInput = document.getElementById("camera-id");
 const authTokenInput = document.getElementById("auth-token");
@@ -30,11 +32,17 @@ const openLocalCameraButton = document.getElementById("open-local-camera");
 const resetLocalDefaultsButton = document.getElementById("reset-local-defaults");
 const localUrlText = document.getElementById("local-url");
 const localHelpText = document.getElementById("local-help");
+const jobStatusText = document.getElementById("job-status");
+const jobResult = document.getElementById("job-result");
+const jobNameText = document.getElementById("job-name");
+const jobMetaText = document.getElementById("job-meta");
+const jobCameras = document.getElementById("job-cameras");
 
 let currentCameraId = "";
 let currentObjectUrl = "";
 let currentTab = "snapshot";
 let hlsPlayer = null;
+let currentJob = null;
 
 function getSavedCameraIds() {
   try {
@@ -132,6 +140,11 @@ function setStatus(message, tone = "") {
   statusText.className = `status${tone ? ` ${tone}` : ""}`;
 }
 
+function setJobStatus(message, tone = "") {
+  jobStatusText.textContent = message;
+  jobStatusText.className = `helper-text${tone ? ` ${tone}` : ""}`;
+}
+
 function buildSnapshotUrl(cameraId) {
   const encodedId = encodeURIComponent(cameraId);
   return `https://media.evercam.io/v2/cameras/${encodedId}/live/snapshot?t=${Date.now()}`;
@@ -170,6 +183,46 @@ function updateLocalFeedUi() {
     ip: localIpInput.value.trim() || "192.168.8.101",
     port: localPortInput.value.trim() || "80",
     brand
+  });
+}
+
+function renderJobResult(job) {
+  currentJob = job;
+  jobResult.hidden = false;
+  jobNameText.textContent = `${job.jobNumber} - ${job.name}`;
+
+  const meta = [];
+  if (job.projectName) meta.push(`Project: ${job.projectName}`);
+  if (job.dealName) meta.push(`Deal: ${job.dealName}`);
+  if (job.status) meta.push(`Status: ${job.status}`);
+  if (job.installDate) meta.push(`Install: ${job.installDate}`);
+  jobMetaText.textContent = meta.join(" | ");
+
+  jobCameras.innerHTML = "";
+  if (!job.cameras.length) {
+    const empty = document.createElement("p");
+    empty.className = "helper-text";
+    empty.textContent = "No cameras found on this job.";
+    jobCameras.appendChild(empty);
+    return;
+  }
+
+  job.cameras.forEach((camera) => {
+    const chip = document.createElement("div");
+    chip.className = "saved-camera";
+
+    const loadButton = document.createElement("button");
+    loadButton.type = "button";
+    loadButton.className = "saved-camera-load";
+    loadButton.textContent = camera.id;
+    loadButton.title = camera.name || camera.id;
+    loadButton.addEventListener("click", () => {
+      cameraInput.value = camera.id;
+      loadCurrentView(camera.id);
+    });
+
+    chip.append(loadButton);
+    jobCameras.appendChild(chip);
   });
 }
 
@@ -394,6 +447,41 @@ function loadCurrentView(cameraId) {
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   loadCurrentView(cameraInput.value);
+});
+
+jobForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const jobId = jobInput.value.trim();
+  if (!jobId) {
+    setJobStatus("Enter a job number first.", "error");
+    return;
+  }
+
+  setJobStatus("Finding job...", "");
+  jobResult.hidden = true;
+
+  try {
+    const response = await fetch(`/api/zoho-job?jobId=${encodeURIComponent(jobId)}`);
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Job lookup failed.");
+    }
+
+    renderJobResult(result);
+    setJobStatus(`Loaded ${result.cameras.length} camera${result.cameras.length === 1 ? "" : "s"} for job ${result.jobNumber}.`, "success");
+
+    if (result.cameras.length) {
+      cameraInput.value = result.cameras[0].id;
+      currentCameraId = result.cameras[0].id;
+      currentCameraText.textContent = `Current camera: ${currentCameraId}`;
+      refreshButton.disabled = false;
+    }
+  } catch (error) {
+    currentJob = null;
+    jobResult.hidden = true;
+    setJobStatus(error.message || "Could not load that job.", "error");
+  }
 });
 
 refreshButton.addEventListener("click", () => {
