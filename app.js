@@ -974,23 +974,23 @@ async function tryLoadSingleCamera(cameraId) {
   const headers = await getAuthHeaders();
   const response = await fetch(buildCameraDetailsUrl(cameraId), { headers });
   if (!response.ok) {
-    return false;
+    return { ok: false, status: response.status };
   }
 
   const result = await response.json();
   const camera = Array.isArray(result.cameras) ? result.cameras[0] : null;
   if (!camera) {
-    return false;
+    return { ok: false, status: 404 };
   }
 
-    applyCameraMetadata(camera);
-    hideJobResult();
-    setCurrentCameraCollection([]);
-    setLookupStatus(`Loaded camera ${cameraId}.`, "success");
+  applyCameraMetadata(camera);
+  hideJobResult();
+  setCurrentCameraCollection([]);
+  setLookupStatus(`Loaded camera ${cameraId}.`, "success");
   rememberLookupValue(cameraId);
   await loadCurrentView(cameraId, { preserveCameraName: true });
   lookupInput.value = cameraId;
-  return true;
+  return { ok: true };
 }
 
 lookupForm.addEventListener("submit", async (event) => {
@@ -1051,8 +1051,8 @@ lookupForm.addEventListener("submit", async (event) => {
 
   hideJobResult();
 
-  const loadedCamera = await tryLoadSingleCamera(value);
-  if (loadedCamera) {
+  const cameraResult = await tryLoadSingleCamera(value);
+  if (cameraResult.ok) {
     return;
   }
 
@@ -1061,5 +1061,15 @@ lookupForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  setLookupStatus("No camera or project found for that ID.", "error");
+  if (cameraResult.status === 403) {
+    setLookupStatus("Camera found, but access is required. Sign in with a user who has camera view access.", "error");
+    return;
+  }
+
+  if (cameraResult.status === 401) {
+    setLookupStatus("Login failed or session expired. Please sign in again.", "error");
+    return;
+  }
+
+  setLookupStatus("No camera or project found for that ID.", "");
 });
