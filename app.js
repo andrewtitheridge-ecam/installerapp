@@ -41,6 +41,7 @@ const jobWorksheetLink = document.getElementById("job-worksheet-link");
 const jobCameras = document.getElementById("job-cameras");
 
 let currentCameraId = "";
+let currentCameraName = "";
 let currentObjectUrl = "";
 let currentTab = "snapshot";
 let hlsPlayer = null;
@@ -164,6 +165,20 @@ function setStatus(message, tone = "") {
 function setLookupStatus(message, tone = "") {
   lookupStatusText.textContent = message;
   lookupStatusText.className = `helper-text${tone ? ` ${tone}` : ""}`;
+}
+
+function updateCurrentCameraText(cameraId = currentCameraId, cameraName = currentCameraName) {
+  const normalizedId = (cameraId || "").trim().toLowerCase();
+  const friendlyName = (cameraName || "").trim();
+
+  if (!normalizedId) {
+    currentCameraText.textContent = "No camera selected yet.";
+    return;
+  }
+
+  currentCameraText.textContent = friendlyName
+    ? `Current camera: ${normalizedId} - ${friendlyName}`
+    : `Current camera: ${normalizedId}`;
 }
 
 function buildSnapshotUrl(cameraId) {
@@ -300,7 +315,8 @@ function renderCameraSelection(cameras, selectedCameraId = "") {
     loadButton.addEventListener("click", () => {
       loadCurrentView(camera.id, {
         preserveSummary: true,
-        preserveLookupValue: lookupInput.value.trim().toLowerCase()
+        preserveLookupValue: lookupInput.value.trim().toLowerCase(),
+        preserveCameraName: true
       });
     });
 
@@ -427,6 +443,9 @@ async function loadSnapshot(cameraId, options = {}) {
   }
 
   currentCameraId = normalized;
+  if (!options.preserveCameraName) {
+    currentCameraName = "";
+  }
   if (!options.preserveSummary) {
     hideJobResult();
   }
@@ -436,7 +455,7 @@ async function loadSnapshot(cameraId, options = {}) {
     lookupInput.value = normalized;
   }
   refreshButton.disabled = false;
-  currentCameraText.textContent = `Current camera: ${normalized}`;
+  updateCurrentCameraText(normalized);
   setStatus("Loading snapshot...", "");
   rememberCameraId(normalized);
 
@@ -483,6 +502,9 @@ async function loadLiveFeed(cameraId, options = {}) {
   }
 
   currentCameraId = normalized;
+  if (!options.preserveCameraName) {
+    currentCameraName = "";
+  }
   if (!options.preserveSummary) {
     hideJobResult();
   }
@@ -492,7 +514,7 @@ async function loadLiveFeed(cameraId, options = {}) {
     lookupInput.value = normalized;
   }
   refreshButton.disabled = false;
-  currentCameraText.textContent = `Current camera: ${normalized}`;
+  updateCurrentCameraText(normalized);
   setStatus("Loading live feed...", "");
   rememberCameraId(normalized);
 
@@ -517,9 +539,11 @@ async function loadLiveFeed(cameraId, options = {}) {
       throw new Error(`HTTP ${detailsResponse.status}`);
     }
 
-    const detailsJson = await detailsResponse.json();
-    const camera = Array.isArray(detailsJson.cameras) ? detailsJson.cameras[0] : null;
-    const hlsUrl = camera?.proxy_url?.hls || buildHlsUrl(normalized);
+      const detailsJson = await detailsResponse.json();
+      const camera = Array.isArray(detailsJson.cameras) ? detailsJson.cameras[0] : null;
+      currentCameraName = camera?.name || currentCameraName;
+      updateCurrentCameraText(normalized, currentCameraName);
+      const hlsUrl = camera?.proxy_url?.hls || buildHlsUrl(normalized);
 
     if (window.Hls && window.Hls.isSupported()) {
       hlsPlayer = new window.Hls({
@@ -585,11 +609,11 @@ function loadCurrentView(cameraId, options = {}) {
     }
     if (options.preserveLookupValue) {
       lookupInput.value = options.preserveLookupValue;
-    } else {
-      lookupInput.value = currentCameraId;
-    }
-    currentCameraText.textContent = `Current camera: ${currentCameraId || "No camera selected yet."}`;
-    rememberCameraId(currentCameraId);
+      } else {
+        lookupInput.value = currentCameraId;
+      }
+      updateCurrentCameraText(currentCameraId);
+      rememberCameraId(currentCameraId);
     updateLocalFeedUi();
     setStatus("Ready to open the local camera feed on the onsite network.", "success");
     return;
@@ -687,17 +711,19 @@ async function loadProjectCameras(projectId) {
       throw new Error("No cameras found for that project.");
     }
 
-    currentCameraId = cameras[0].id;
-    currentCameraText.textContent = `Current camera: ${currentCameraId}`;
-    refreshButton.disabled = false;
+      currentCameraId = cameras[0].id;
+      currentCameraName = cameras[0].name || "";
+      updateCurrentCameraText(currentCameraId, currentCameraName);
+      refreshButton.disabled = false;
 
     renderProjectResult(projectId, cameras, cameras[0].id);
     setLookupStatus(`Loaded ${cameras.length} camera${cameras.length === 1 ? "" : "s"} for project ${projectId}.`, "success");
     switchTab("snapshot", { suppressLoad: true });
-    await loadSnapshot(cameras[0].id, {
-      preserveSummary: true,
-      preserveLookupValue: projectId
-    });
+      await loadSnapshot(cameras[0].id, {
+        preserveSummary: true,
+        preserveLookupValue: projectId,
+        preserveCameraName: true
+      });
     lookupInput.value = projectId;
   } catch (error) {
     setLookupStatus(error.message || "Could not load that project.", "error");
@@ -717,9 +743,10 @@ async function tryLoadSingleCamera(cameraId) {
     return false;
   }
 
+  currentCameraName = camera.name || "";
   hideJobResult();
   setLookupStatus(`Loaded camera ${cameraId}.`, "success");
-  await loadCurrentView(cameraId);
+  await loadCurrentView(cameraId, { preserveCameraName: true });
   lookupInput.value = cameraId;
   return true;
 }
@@ -755,12 +782,14 @@ lookupForm.addEventListener("submit", async (event) => {
 
       if (result.cameras.length) {
         currentCameraId = result.cameras[0].id;
-        currentCameraText.textContent = `Current camera: ${currentCameraId}`;
+        currentCameraName = result.cameras[0].name || "";
+        updateCurrentCameraText(currentCameraId, currentCameraName);
         refreshButton.disabled = false;
         switchTab("snapshot", { suppressLoad: true });
         await loadSnapshot(result.cameras[0].id, {
           preserveSummary: true,
-          preserveLookupValue: jobId
+          preserveLookupValue: jobId,
+          preserveCameraName: true
         });
         lookupInput.value = jobId;
       }
