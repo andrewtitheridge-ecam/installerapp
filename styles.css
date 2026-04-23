@@ -326,6 +326,11 @@ button:disabled {
   color: var(--muted);
 }
 
+.lookup-emphasis {
+  color: var(--warning);
+  font-weight: 700;
+}
+
 .saved-cameras {
   display: flex;
   flex-wrap: wrap;
@@ -425,7 +430,7 @@ button:disabled {
 .image-nav-button {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(-50%) !important;
   z-index: 5;
   display: flex;
   align-items: center;
@@ -435,12 +440,7 @@ button:disabled {
   padding: 0;
   border-radius: 0;
   background: transparent;
-  color: rgba(255, 255, 255, 0.92);
   box-shadow: none;
-  font-size: 3.4rem;
-  font-weight: 400;
-  line-height: 1;
-  text-shadow: 0 2px 10px rgba(16, 28, 39, 0.45);
   transition: none;
 }
 
@@ -452,10 +452,30 @@ button:disabled {
   right: 24px;
 }
 
-.image-nav-button:hover {
-  transform: translateY(-50%);
+.image-nav-button::before {
+  content: "";
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-top: 4px solid rgba(255, 255, 255, 0.96);
+  border-right: 4px solid rgba(255, 255, 255, 0.96);
+  filter: drop-shadow(0 2px 8px rgba(16, 28, 39, 0.42));
+}
+
+.image-nav-left::before {
+  transform: rotate(-135deg);
+}
+
+.image-nav-right::before {
+  transform: rotate(45deg);
+}
+
+.image-nav-button:hover,
+.image-nav-button:focus,
+.image-nav-button:active {
+  transform: translateY(-50%) !important;
   background: transparent;
-  color: #ffffff;
+  box-shadow: none;
 }
 
 #snapshot-image {

@@ -198,6 +198,11 @@ function setLookupStatus(message, tone = "") {
   lookupStatusText.className = `helper-text${tone ? ` ${tone}` : ""}`;
 }
 
+function setLookupStatusHtml(message, tone = "") {
+  lookupStatusText.innerHTML = message;
+  lookupStatusText.className = `helper-text${tone ? ` ${tone}` : ""}`;
+}
+
 function updateCurrentCameraText(cameraId = currentCameraId, cameraName = currentCameraName) {
   const normalizedId = (cameraId || "").trim().toLowerCase();
   const friendlyName = (cameraName || "").trim();
@@ -1057,7 +1062,10 @@ lookupForm.addEventListener("submit", async (event) => {
   }
 
   if (cameraResult.status === 403) {
-    setLookupStatus("Camera found, but your user does not have viewer access to this camera. Sign in with a user who does.", "error");
+    setLookupStatusHtml(
+      'Camera found, but <span class="lookup-emphasis">your user does not have viewer access to this camera</span>. Sign in with a user who does.',
+      "error"
+    );
     return;
   }
 
