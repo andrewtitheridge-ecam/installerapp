@@ -47,7 +47,6 @@ const jobWorksheetLink = document.getElementById("job-worksheet-link");
 const jobCameras = document.getElementById("job-cameras");
 const adminSnapshotTools = document.getElementById("admin-snapshot-tools");
 const adminSnapshotLink = document.getElementById("admin-snapshot-link");
-const adminSnapshotUrlText = document.getElementById("admin-snapshot-url");
 
 let currentCameraId = "";
 let currentCameraName = "";
@@ -358,13 +357,11 @@ function updateAdminSnapshotUi(camera = currentCameraMeta) {
   if (!adminUrl) {
     adminSnapshotLink.hidden = true;
     adminSnapshotLink.removeAttribute("href");
-    adminSnapshotUrlText.textContent = "";
     return;
   }
 
   adminSnapshotLink.href = adminUrl;
   adminSnapshotLink.hidden = false;
-  adminSnapshotUrlText.textContent = adminUrl;
 }
 
 function applyCameraMetadata(camera) {
