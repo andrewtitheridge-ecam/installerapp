@@ -723,6 +723,9 @@ async function tryLoadSingleCamera(cameraId) {
 
 lookupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
   const value = lookupInput.value.trim().toLowerCase();
   lookupInput.value = value;
 
