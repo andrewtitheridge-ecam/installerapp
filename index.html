@@ -56,8 +56,10 @@
             <label for="job-note-content" class="label">Note</label>
             <textarea id="job-note-content" class="note-input" placeholder="Add a job note for the installer team or project record."></textarea>
             <div class="job-note-actions">
+              <label for="job-note-camera" class="ghost-button file-picker">Use Camera</label>
+              <input id="job-note-camera" type="file" accept="image/*" capture="environment" hidden>
               <label for="job-note-images" class="ghost-button file-picker">Add Photos</label>
-              <input id="job-note-images" type="file" accept="image/*" capture="environment" multiple hidden>
+              <input id="job-note-images" type="file" accept="image/*" multiple hidden>
               <button id="save-job-note" type="button" class="primary-button">Save Note</button>
             </div>
             <p id="job-note-files" class="helper-text">No photos selected.</p>

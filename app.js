@@ -47,6 +47,7 @@ const jobWorksheetLink = document.getElementById("job-worksheet-link");
 const jobCameras = document.getElementById("job-cameras");
 const jobNotePanel = document.getElementById("job-note-panel");
 const jobNoteContent = document.getElementById("job-note-content");
+const jobNoteCamera = document.getElementById("job-note-camera");
 const jobNoteImages = document.getElementById("job-note-images");
 const jobNoteFiles = document.getElementById("job-note-files");
 const jobNoteStatus = document.getElementById("job-note-status");
@@ -63,6 +64,7 @@ let currentJob = null;
 let sessionAuthToken = "";
 let currentCameraCollection = [];
 let currentCameraMeta = null;
+let selectedJobFiles = [];
 
 function getSavedCameraIds() {
   try {
@@ -269,8 +271,25 @@ function updateCameraNavigation() {
   overlayNextCameraButton.disabled = currentIndex >= currentCameraCollection.length - 1;
 }
 
+function getJobFileKey(file) {
+  return [file.name, file.size, file.lastModified].join("::");
+}
+
+function appendSelectedJobFiles(files) {
+  const nextFiles = Array.isArray(files) ? files : Array.from(files || []);
+  const seen = new Set(selectedJobFiles.map(getJobFileKey));
+
+  nextFiles.forEach((file) => {
+    const key = getJobFileKey(file);
+    if (!seen.has(key)) {
+      selectedJobFiles.push(file);
+      seen.add(key);
+    }
+  });
+}
+
 function renderSelectedJobFiles() {
-  const files = Array.from(jobNoteImages.files || []);
+  const files = selectedJobFiles;
   jobNoteFiles.textContent = files.length
     ? `${files.length} photo${files.length === 1 ? "" : "s"} selected: ${files.map((file) => file.name).join(", ")}`
     : "No photos selected.";
@@ -278,6 +297,8 @@ function renderSelectedJobFiles() {
 
 function resetJobNoteForm() {
   jobNoteContent.value = "";
+  selectedJobFiles = [];
+  jobNoteCamera.value = "";
   jobNoteImages.value = "";
   renderSelectedJobFiles();
   setJobNoteStatus("");
@@ -943,7 +964,17 @@ clearLoginButton.addEventListener("click", () => {
   sessionAuthToken = "";
 });
 
-jobNoteImages.addEventListener("change", renderSelectedJobFiles);
+jobNoteCamera.addEventListener("change", () => {
+  appendSelectedJobFiles(jobNoteCamera.files);
+  jobNoteCamera.value = "";
+  renderSelectedJobFiles();
+});
+
+jobNoteImages.addEventListener("change", () => {
+  appendSelectedJobFiles(jobNoteImages.files);
+  jobNoteImages.value = "";
+  renderSelectedJobFiles();
+});
 
 saveJobNoteButton.addEventListener("click", async () => {
   if (!currentJob?.id) {
@@ -952,7 +983,7 @@ saveJobNoteButton.addEventListener("click", async () => {
   }
 
   const note = jobNoteContent.value.trim();
-  const files = Array.from(jobNoteImages.files || []);
+  const files = [...selectedJobFiles];
 
   if (!note && files.length === 0) {
     setJobNoteStatus("Add some note text or at least one photo before saving.", "error");
