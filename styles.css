@@ -479,6 +479,11 @@ button:disabled {
   background: transparent;
   box-shadow: none;
   transition: none;
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
+  text-indent: -9999px;
+  overflow: hidden;
 }
 
 .image-nav-left {
