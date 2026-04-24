@@ -29,7 +29,7 @@
               id="lookup-id"
               name="lookupId"
               type="text"
-              placeholder="e.g. 03art-jsfrz, clayt-fqhiv, or 30361"
+              placeholder="e.g. gpocam"
               autocomplete="off"
               spellcheck="false"
               autocapitalize="none"
@@ -51,6 +51,18 @@
             <p class="section-title">Cameras</p>
             <div id="job-cameras" class="saved-cameras"></div>
           </div>
+          <div id="job-note-panel" class="job-note-panel" hidden>
+            <p class="section-title">Job Notes</p>
+            <label for="job-note-content" class="label">Note</label>
+            <textarea id="job-note-content" class="note-input" placeholder="Add a job note for the installer team or project record."></textarea>
+            <div class="job-note-actions">
+              <label for="job-note-images" class="ghost-button file-picker">Add Photos</label>
+              <input id="job-note-images" type="file" accept="image/*" capture="environment" multiple hidden>
+              <button id="save-job-note" type="button" class="primary-button">Save Note</button>
+            </div>
+            <p id="job-note-files" class="helper-text">No photos selected.</p>
+            <p id="job-note-status" class="helper-text"></p>
+          </div>
         </div>
 
         <div class="local-grid auth-grid">
@@ -60,7 +72,7 @@
               id="auth-username"
               name="username"
               type="text"
-              placeholder="Optional: your Evercam email"
+              placeholder="Optional"
               autocomplete="username"
               spellcheck="false"
             >
@@ -84,7 +96,7 @@
         </label>
 
         <div class="helper-row">
-          <p class="helper-text">For private cameras, sign in with Evercam username and password. The user must have member access or above on the selected camera.</p>
+          <p class="helper-text">For private cameras, sign in with Evercam username and password. The user must have viewer access or above on the selected camera.</p>
           <div class="button-stack">
             <button id="clear-login" type="button" class="ghost-button">Clear Login</button>
             <button id="clear-history" type="button" class="ghost-button">Clear Saved IDs</button>
